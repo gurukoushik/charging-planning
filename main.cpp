@@ -3,7 +3,7 @@
 #include <vector>
 
 #define NUM_CHARGERS 303
-#define INIT_CHARGE 320.0
+#define INIT_RANGE 320.0
 #define SPEED 105.0
 #define R 6356.752
 #define PI 3.141592653589793238462643383279502884197169399375105820
@@ -33,8 +33,8 @@ bool input(int argc, char** argv) {
 
 double greatCircleDistance(double lat1, double lon1, double lat2, double lon2) {
     // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
-    double dLat = deg2rad(lat2 - lat1);
-    double dLon = deg2rad(lon2 - lon1);
+    double dLat = deg2rad((lat2 - lat1));
+    double dLon = deg2rad((lon2 - lon1));
 
     // convert to radians
     lat1 = deg2rad(lat1);
@@ -57,15 +57,23 @@ std::vector<node> findPath(std::string startCityName, std::string goalCityName) 
     std::vector<node> path;
     row start = getCityFromString(startCity);
     row goal = getCityFromString(goalCity);
-    double range = INIT_CHARGE;
+    double range = INIT_RANGE;
 
     path.push_back(node(start, 0));
-
     while (greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon) > range) {
-        // for (auto city: network) {
-
-        // }
-        break;
+        double sumDistances = std::numeric_limits<double>::infinity();
+        row minReachableCity;
+        for (auto city: network) {
+            if (city.name == start.name || city.name == goal.name) continue;
+            double startToCity = greatCircleDistance(start.lat, start.lon, city.lat, city.lon);
+            double cityToGoal = greatCircleDistance(city.lat, city.lon, goal.lat, goal.lon);
+            if (startToCity + cityToGoal < sumDistances && startToCity < range) {
+                sumDistances = startToCity + cityToGoal;
+                minReachableCity = city;
+            }
+        }
+        path.push_back(node(minReachableCity, 0.0));
+        start = minReachableCity;
     }
 
     path.push_back(node(goal, 0));
