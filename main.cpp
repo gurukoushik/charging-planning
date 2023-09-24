@@ -24,8 +24,17 @@ bool input(int argc, char** argv) {
 }
 
 double greatCircleDistance(double lat1, double lon1, double lat2, double lon2, double radius) {
-    // FIXME
-    return 0.0;    
+    // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
+    double dLat = deg2rad(lat2 - lat1);
+    double dLon = deg2rad(lon2 - lon1);
+
+    // convert to radians
+    lat1 = deg2rad(lat1);
+    lat2 = deg2rad(lat2);
+
+    double a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
+    double c = 2 * asin(sqrt(a));
+    return radius * c;
 }
 
 int main(int argc, char** argv)
