@@ -1,6 +1,7 @@
 #include "network.h"
 #include <cmath>
 #include <vector>
+#include <iomanip>
 
 #define NUM_CHARGERS 303
 #define INIT_RANGE 320.0
@@ -53,6 +54,21 @@ row getCityFromString(std::string cityName) {
     }
 }
 
+row findMinDeviationCity(row start, row goal, double range) {
+    double sumDistances = std::numeric_limits<double>::infinity();
+    row minDeviationCity;
+    for (auto city: network) {
+        if (city.name == start.name || city.name == goal.name) continue;
+        double startToCity = greatCircleDistance(start.lat, start.lon, city.lat, city.lon);
+        double cityToGoal = greatCircleDistance(city.lat, city.lon, goal.lat, goal.lon);
+        if (startToCity + cityToGoal < sumDistances && startToCity < range) {
+            sumDistances = startToCity + cityToGoal;
+            minDeviationCity = city;
+        }
+    }
+    return minDeviationCity;
+}
+
 std::vector<node> findPath(std::string startCityName, std::string goalCityName) {
     std::vector<node> path;
     row start = getCityFromString(startCity);
@@ -61,19 +77,15 @@ std::vector<node> findPath(std::string startCityName, std::string goalCityName) 
 
     path.push_back(node(start, 0));
     while (greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon) > range) {
-        double sumDistances = std::numeric_limits<double>::infinity();
-        row minReachableCity;
-        for (auto city: network) {
-            if (city.name == start.name || city.name == goal.name) continue;
-            double startToCity = greatCircleDistance(start.lat, start.lon, city.lat, city.lon);
-            double cityToGoal = greatCircleDistance(city.lat, city.lon, goal.lat, goal.lon);
-            if (startToCity + cityToGoal < sumDistances && startToCity < range) {
-                sumDistances = startToCity + cityToGoal;
-                minReachableCity = city;
-            }
-        }
-        path.push_back(node(minReachableCity, 0.0));
-        start = minReachableCity;
+        row minDeviationCity = findMinDeviationCity(start, goal, range);
+        // Calculate range after driving to the minimum deviation city
+        range -= greatCircleDistance(start.lat, start.lon, minDeviationCity.lat, minDeviationCity.lon);
+        // Charge back to full range
+        double chargeTimeMinDeviationCity = (INIT_RANGE - range) / minDeviationCity.rate;
+        range = INIT_RANGE;
+        
+        path.push_back(node(minDeviationCity, chargeTimeMinDeviationCity));
+        start = minDeviationCity;
     }
 
     path.push_back(node(goal, 0));
@@ -89,12 +101,17 @@ int main(int argc, char** argv)
     // Approach 1: 
     // Given a start and goal, find a city which satisfies min(d(start, city) + d(city, goal))
     // Additionally impose the constraint that the d(start, city) < range
+    // At each city, charge fully to the maximum range of the vehicle
     // Do this iteratively until d(city, goal) < range
     std::vector<node> path = findPath(startCity, goalCity);
 
+    // Pretty print the planned route and charging time at each city
+    std::cout << "**************************** Planned route ****************************\n";
     for(auto n: path){
-        std::cout << "City: " << n.city.name << " Charging Time: " << n.chargeTime << std::endl; 
+        std::cout << "City: " << n.city.name << std::setw(50 - n.city.name.size())
+        << " Charging Time: " << n.chargeTime << " hr" << std::endl; 
     }
+    std::cout << "***********************************************************************\n";
 
     return 0;
 }
