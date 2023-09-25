@@ -4,9 +4,9 @@
 #include <iomanip>
 
 #define NUM_CHARGERS 303
-#define INIT_RANGE 320.0
-#define SPEED 105.0
-#define R 6356.752
+#define INIT_RANGE 320.0  // km
+#define SPEED 105.0  // kmph
+#define R 6356.752  // km
 #define PI 3.141592653589793238462643383279502884197169399375105820
 #define deg2rad(d) d*PI/180.0
 
@@ -15,6 +15,11 @@ struct node {
     double chargeTime;
 
     node(row c, double t): city(c), chargeTime(t) {};
+};
+
+struct stats {
+    double tripTimeHrs;
+    double computeTimeSecs;
 };
 
 std::string startCity, goalCity;
@@ -52,6 +57,16 @@ row getCityFromString(std::string cityName) {
             return city;
         }
     }
+}
+
+double getTripTimeHrs(std::vector<node> path) {
+    double tripTimeHrs = 0;
+    for (int i = 1; i < path.size(); i++) {
+        double drivingTime = greatCircleDistance(path[i-1].city.lat, path[i-1].city.lon, path[i].city.lat, path[i].city.lon) / SPEED;
+        double chargingTime = path[i-1].chargeTime;
+        tripTimeHrs += (drivingTime + chargingTime);
+    }
+    return tripTimeHrs;
 }
 
 row findMinDeviationCity(row start, row goal, double range) {
@@ -92,6 +107,19 @@ std::vector<node> findPath(std::string startCityName, std::string goalCityName) 
     return path;
 }
 
+void prettyPrintSolution(std::vector<node> path, stats solutionStats) {
+    // Pretty print the planned route and charging time at each city
+    std::cout << "**************************** Planned route ****************************\n";
+    for(auto n: path){
+        std::cout << "City: " << n.city.name << std::setw(50 - n.city.name.size())
+        << " Charging Time: " << n.chargeTime << " hr" << std::endl; 
+    }
+    std::cout << "***********************************************************************\n";
+    std::cout << "Trip time: " << solutionStats.tripTimeHrs << " hrs" << "    "
+        << "Path compute time: " << solutionStats.computeTimeSecs << " seconds" << std::endl;
+    std::cout << "***********************************************************************\n";
+}
+
 int main(int argc, char** argv)
 {
     if (!input(argc, argv)) {
@@ -103,15 +131,17 @@ int main(int argc, char** argv)
     // Additionally impose the constraint that the d(start, city) < range
     // At each city, charge fully to the maximum range of the vehicle
     // Do this iteratively until d(city, goal) < range
+    stats solutionStats;    
+    auto timeStart = std::chrono::high_resolution_clock::now();
+
     std::vector<node> path = findPath(startCity, goalCity);
 
-    // Pretty print the planned route and charging time at each city
-    std::cout << "**************************** Planned route ****************************\n";
-    for(auto n: path){
-        std::cout << "City: " << n.city.name << std::setw(50 - n.city.name.size())
-        << " Charging Time: " << n.chargeTime << " hr" << std::endl; 
-    }
-    std::cout << "***********************************************************************\n";
+    auto timeEnd = std::chrono::high_resolution_clock::now();
+    auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(timeEnd - timeStart);
+    solutionStats.computeTimeSecs = timeTaken.count();
+    solutionStats.tripTimeHrs = getTripTimeHrs(path);
+
+    prettyPrintSolution(path, solutionStats);
 
     return 0;
 }
