@@ -76,6 +76,24 @@ double getTripTimeHrs(std::vector<node> path) {
   return tripTimeHrs;
 }
 
+void prettyPrintSolution(std::vector<node> path, stats solutionStats) {
+  // Pretty print the planned route and charging time at each city
+  std::cout << "**************************** Planned route "
+               "****************************\n";
+  for (auto n : path) {
+    std::cout << "City: " << n.city.name << std::setw(50 - n.city.name.size())
+              << " Charging Time: " << n.chargeTime << " hr" << std::endl;
+  }
+  std::cout << "***************************************************************"
+               "********\n";
+  std::cout << "Trip time: " << solutionStats.tripTimeHrs << " hrs"
+            << "    "
+            << "Path compute time: " << solutionStats.computeTimeSecs
+            << " seconds" << std::endl;
+  std::cout << "***************************************************************"
+               "********\n";
+}
+
 row findMinDeviationCity(row start, row goal, double range) {
   double sumDistances = std::numeric_limits<double>::infinity();
   row minDeviationCity;
@@ -93,7 +111,7 @@ row findMinDeviationCity(row start, row goal, double range) {
   return minDeviationCity;
 }
 
-std::vector<node> findPath(std::string startCityName,
+std::vector<node> findBruteForcePath(std::string startCityName,
                            std::string goalCityName) {
   std::vector<node> path;
   row start = getCityFromString(startCity);
@@ -120,22 +138,19 @@ std::vector<node> findPath(std::string startCityName,
   return path;
 }
 
-void prettyPrintSolution(std::vector<node> path, stats solutionStats) {
-  // Pretty print the planned route and charging time at each city
-  std::cout << "**************************** Planned route "
-               "****************************\n";
-  for (auto n : path) {
-    std::cout << "City: " << n.city.name << std::setw(50 - n.city.name.size())
-              << " Charging Time: " << n.chargeTime << " hr" << std::endl;
+std::vector<node> reevaluateChargingTimes(std::vector<node> path) {
+  double range = INIT_RANGE;
+  for (int i = 0; i < path.size()-1; i++) {
+    double dist = greatCircleDistance(path[i].city.lat, path[i].city.lon, path[i+1].city.lat, path[i+1].city.lon);
+    if (range >= dist) {
+      range -= dist;
+      path[i].chargeTime = 0.0;
+      continue;
+    }
+    path[i].chargeTime = (dist - range) / path[i].city.rate;
+    range = dist;
   }
-  std::cout << "***************************************************************"
-               "********\n";
-  std::cout << "Trip time: " << solutionStats.tripTimeHrs << " hrs"
-            << "    "
-            << "Path compute time: " << solutionStats.computeTimeSecs
-            << " seconds" << std::endl;
-  std::cout << "***************************************************************"
-               "********\n";
+  return path;
 }
 
 int main(int argc, char** argv) {
@@ -144,15 +159,30 @@ int main(int argc, char** argv) {
               << std::endl;
     return -1;
   }
+
+  stats solutionStats;
+  auto timeStart = std::chrono::high_resolution_clock::now();
+
   // Approach 1:
   // Given a start and goal, find a city which satisfies min(d(start, city) +
   // d(city, goal)) Additionally impose the constraint that the d(start, city) <
   // range At each city, charge fully to the maximum range of the vehicle Do
   // this iteratively until d(city, goal) < range
-  stats solutionStats;
-  auto timeStart = std::chrono::high_resolution_clock::now();
+  std::vector<node> path = findBruteForcePath(startCity, goalCity);
 
-  std::vector<node> path = findPath(startCity, goalCity);
+  // Approach 2:
+  // Reset the charging times based on the found path. Set the charging time
+  // to just the amount of charge needed to get to the next city in the path
+  std::vector<node> reevaluatedPath = reevaluateChargingTimes(path);
+  path = reevaluatedPath;
+
+  // Approach 3:
+  // - From both start and the goal, add the cities within range to their respective
+  // priority queues. 
+  // - Set the key of the priority queue to be (d(start, city) + d(city, goal) - d(start, goal))
+  // - Expand from both the start and goal priority queues until there is an intersection
+  // between the queues.
+  // - Do a Monte Carlo from start to goal and find the minimum time path
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
