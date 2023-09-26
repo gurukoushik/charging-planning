@@ -78,8 +78,8 @@ double getTripTimeHrs(std::vector<node> path) {
 
 void prettyPrintSolution(std::vector<node> path, stats solutionStats) {
   // Pretty print the planned route and charging time at each city
-  std::cout << "**************************** Planned route "
-               "****************************\n";
+  std::cout << "**************************** Planned path "
+               "*****************************\n";
   for (auto n : path) {
     std::cout << "City: " << n.city.name << std::setw(50 - n.city.name.size())
               << " Charging Time: " << n.chargeTime << " hr" << std::endl;
@@ -112,7 +112,7 @@ row findMinDeviationCity(row start, row goal, double range) {
 }
 
 std::vector<node> findBruteForcePath(std::string startCityName,
-                           std::string goalCityName) {
+                                     std::string goalCityName) {
   std::vector<node> path;
   row start = getCityFromString(startCity);
   row goal = getCityFromString(goalCity);
@@ -140,17 +140,35 @@ std::vector<node> findBruteForcePath(std::string startCityName,
 
 std::vector<node> reevaluateChargingTimes(std::vector<node> path) {
   double range = INIT_RANGE;
-  for (int i = 0; i < path.size()-1; i++) {
-    double dist = greatCircleDistance(path[i].city.lat, path[i].city.lon, path[i+1].city.lat, path[i+1].city.lon);
+  for (int i = 0; i < path.size() - 1; i++) {
+    double dist =
+        greatCircleDistance(path[i].city.lat, path[i].city.lon,
+                            path[i + 1].city.lat, path[i + 1].city.lon);
     if (range >= dist) {
       range -= dist;
       path[i].chargeTime = 0.0;
       continue;
     }
     path[i].chargeTime = (dist - range) / path[i].city.rate;
-    range = dist;
+    range = 0;
   }
   return path;
+}
+
+bool verifyPath(std::vector<node> path) {
+  bool validPath = true;
+  double range = INIT_RANGE;
+  for (int i = 1; i < path.size(); i++) {
+    range -= greatCircleDistance(path[i - 1].city.lat, path[i - 1].city.lon,
+                                 path[i].city.lat, path[i].city.lon);
+    // std::cout << "range at " << path[i].city.name << " " << range << "\n";
+    if (range < 0) {
+      validPath = false;
+      break;
+    }
+    range += path[i].chargeTime * path[i].city.rate;
+  }
+  return validPath;
 }
 
 int main(int argc, char** argv) {
@@ -177,11 +195,12 @@ int main(int argc, char** argv) {
   path = reevaluatedPath;
 
   // Approach 3:
-  // - From both start and the goal, add the cities within range to their respective
-  // priority queues. 
-  // - Set the key of the priority queue to be (d(start, city) + d(city, goal) - d(start, goal))
-  // - Expand from both the start and goal priority queues until there is an intersection
-  // between the queues.
+  // - From both start and the goal, add the cities within range to their
+  // respective priority queues.
+  // - Set the key of the priority queue to be (d(start, city) + d(city, goal) -
+  // d(start, goal))
+  // - Expand from both the start and goal priority queues until there is an
+  // intersection between the queues.
   // - Do a Monte Carlo from start to goal and find the minimum time path
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
@@ -190,6 +209,7 @@ int main(int argc, char** argv) {
   solutionStats.computeTimeSecs = timeTaken.count();
   solutionStats.tripTimeHrs = getTripTimeHrs(path);
 
+  std::cout << "Path valid? : " << verifyPath(path) << std::endl;
   prettyPrintSolution(path, solutionStats);
 
   return 0;
