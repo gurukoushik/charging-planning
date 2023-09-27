@@ -203,7 +203,6 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
   visited[start.name] = true;
 
   while (true) {
-    std::cout << "curr: " << start.name << "\n";
     for (auto n : network) {
       if (visited[n.name]) {
         continue;
@@ -229,16 +228,14 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
     }
     int iteration = 0;
     int rand_number = rand() % branchFactor;
-    std::cout << rand_number << std::endl;
     searchNode curr = pq.top();
     pq.pop();
+
     while (!pq.empty() && iteration < rand_number) {
       curr = pq.top();
       pq.pop();
       iteration += 1;
     }
-
-    std::cout << "next: " << curr.city.name << "\n";
 
     if (curr.city.name == goal.name) {
       path.push_back(node(goal, 0.0));
@@ -252,6 +249,24 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
   }
 
   return path;
+}
+
+std::vector<node> runMonteCarlo(std::string startCityName,
+                                     std::string goalCityName,
+                                     int branchFactor,
+                                     int maxIterations) {
+  std::vector<node> bestPath;
+  double bestTime = std::numeric_limits<double>::infinity();
+  for (int i = 0; i < maxIterations; i++) {
+    std::vector<node> path = findMonteCarloPath(startCityName, goalCityName, branchFactor);
+    path = reevaluateChargingTimes(path);
+    double time = getTripTimeHrs(path);
+    if (time < bestTime) {
+      bestPath = path;
+      bestTime = time;
+    }
+  }
+  return bestPath;
 }
 
 int main(int argc, char** argv) {
@@ -278,16 +293,9 @@ int main(int argc, char** argv) {
   // path = reevaluatedPath;
 
   // Approach 3:
-  // - From both start and the goal, add the cities within range to their
-  // respective priority queues.
-  // - Set the key of the priority queue to be (d(start, city) + d(city, goal) -
-  // d(start, goal))
-  // - Expand from both the start and goal priority queues until there is an
-  // intersection between the queues.
-  // - Do a Monte Carlo from start to goal and find the minimum time path
-  std::vector<node> path = findMonteCarloPath(startCity, goalCity, 2);
-  std::vector<node> reevaluatedPath = reevaluateChargingTimes(path);
-  path = reevaluatedPath;
+  // - From the start city, run a monte carlo simulation by choosing the next
+  //   city to go to in top 'branchFactor' number of mimimum deviation cities
+  std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
