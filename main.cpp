@@ -203,8 +203,12 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
   visited[start.name] = true;
 
   while (true) {
+    std::cout << "curr: " << start.name << "\n";
     for (auto n : network) {
       if (visited[n.name]) {
+        continue;
+      }
+      if (n.name == start.name) {
         continue;
       }
       double startToCity =
@@ -214,19 +218,34 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
       }
 
       double cityToGoal = greatCircleDistance(n.lat, n.lon, goal.lat, goal.lon);
-      double deviation =
-          startToCity + cityToGoal -
-          greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon);
+      double startToGoal = greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon);
+      double deviation = startToCity + cityToGoal - startToGoal;
+
+      if (deviation > 2 * startToGoal) {
+        continue;
+      }
+      
       pq.push(searchNode(n, deviation));
     }
     int iteration = 0;
+    int rand_number = rand() % branchFactor;
+    std::cout << rand_number << std::endl;
     searchNode curr = pq.top();
+    pq.pop();
+    while (!pq.empty() && iteration < rand_number) {
+      curr = pq.top();
+      pq.pop();
+      iteration += 1;
+    }
+
+    std::cout << "next: " << curr.city.name << "\n";
+
     if (curr.city.name == goal.name) {
       path.push_back(node(goal, 0.0));
       break;
     }
     path.push_back(node(curr.city, 0.0));
-    visited[curr.city.name] = true;
+    // visited[curr.city.name] = true;
     start = curr.city;
     pq = std::priority_queue<searchNode, std::vector<searchNode>,
                              compareSearchNode>();
@@ -266,7 +285,7 @@ int main(int argc, char** argv) {
   // - Expand from both the start and goal priority queues until there is an
   // intersection between the queues.
   // - Do a Monte Carlo from start to goal and find the minimum time path
-  std::vector<node> path = findMonteCarloPath(startCity, goalCity, 10);
+  std::vector<node> path = findMonteCarloPath(startCity, goalCity, 2);
   std::vector<node> reevaluatedPath = reevaluateChargingTimes(path);
   path = reevaluatedPath;
 
