@@ -298,6 +298,12 @@ int main(int argc, char** argv) {
   //   city to go to in top 'branchFactor' number of mimimum deviation cities
   std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
 
+  // Approach 4:
+  // The current charging strategy is to only charge enough to reach the next city
+  // in the path. This can be suboptimal if we can preemptively charge more in cities
+  // with faster charging rate
+  // TODO
+
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
       timeEnd - timeStart);
