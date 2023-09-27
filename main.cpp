@@ -203,7 +203,6 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
   visited[start.name] = true;
 
   while (true) {
-    std::cout << start.name << std::endl;
     for (auto n : network) {
       if (visited[n.name]) {
         continue;
@@ -226,16 +225,7 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
       path.push_back(node(goal, 0.0));
       break;
     }
-    double dist =
-        greatCircleDistance(start.lat, start.lon, curr.city.lat, curr.city.lon);
-    double chargeTime = 0.0;
-    if (dist >= range) {
-      chargeTime = (dist - range) / curr.city.rate;
-      range = 0;
-    } else {
-      range -= dist;
-    }
-    path.push_back(node(curr.city, chargeTime));
+    path.push_back(node(curr.city, 0.0));
     visited[curr.city.name] = true;
     start = curr.city;
     pq = std::priority_queue<searchNode, std::vector<searchNode>,
@@ -277,6 +267,8 @@ int main(int argc, char** argv) {
   // intersection between the queues.
   // - Do a Monte Carlo from start to goal and find the minimum time path
   std::vector<node> path = findMonteCarloPath(startCity, goalCity, 10);
+  std::vector<node> reevaluatedPath = reevaluateChargingTimes(path);
+  path = reevaluatedPath;
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
