@@ -1,15 +1,15 @@
 #include <cmath>
 #include <iomanip>
-#include <vector>
 #include <queue>
 #include <unordered_map>
+#include <vector>
 
 #include "network.h"
 
 #define NUM_CHARGERS 303
 #define MAX_RANGE 320.0  // km
-#define SPEED 105.0       // kmph
-#define R 6356.752        // km
+#define SPEED 105.0      // kmph
+#define R 6356.752       // km
 #define PI 3.141592653589793238462643383279502884197169399375105820
 #define deg2rad(d) d* PI / 180.0
 
@@ -177,43 +177,47 @@ struct searchNode {
   row city;
   double deviation;
 
-  searchNode(row c, double dev) : city(c), deviation(dev) {};
+  searchNode(row c, double dev) : city(c), deviation(dev){};
 };
 
-class compareSearchNode
-{
-public:
-    bool operator()(searchNode &node1, searchNode &node2) {
-      return (node1.deviation > node2.deviation);
-    }
-
+class compareSearchNode {
+ public:
+  bool operator()(searchNode& node1, searchNode& node2) {
+    return (node1.deviation > node2.deviation);
+  }
 };
 
-std::vector<node> findMonteCarloPath(std::string startCityName, std::string goalCityName, int branchFactor) {
+std::vector<node> findMonteCarloPath(std::string startCityName,
+                                     std::string goalCityName,
+                                     int branchFactor) {
   row start = getCityFromString(startCityName);
   row goal = getCityFromString(goalCityName);
   double range = MAX_RANGE;
 
   std::vector<node> path;
   std::unordered_map<std::string, bool> visited;
-  std::priority_queue<searchNode, std::vector<searchNode>, compareSearchNode> pq;
+  std::priority_queue<searchNode, std::vector<searchNode>, compareSearchNode>
+      pq;
 
   path.push_back(node(start, 0.0));
   visited[start.name] = true;
 
   while (true) {
     std::cout << start.name << std::endl;
-    for (auto n: network) {
+    for (auto n : network) {
       if (visited[n.name]) {
         continue;
       }
-      double startToCity = greatCircleDistance(start.lat, start.lon, n.lat, n.lon);
+      double startToCity =
+          greatCircleDistance(start.lat, start.lon, n.lat, n.lon);
       if (startToCity > MAX_RANGE) {
         continue;
       }
 
       double cityToGoal = greatCircleDistance(n.lat, n.lon, goal.lat, goal.lon);
-      double deviation =  startToCity + cityToGoal - greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon);
+      double deviation =
+          startToCity + cityToGoal -
+          greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon);
       pq.push(searchNode(n, deviation));
     }
     int iteration = 0;
@@ -222,19 +226,20 @@ std::vector<node> findMonteCarloPath(std::string startCityName, std::string goal
       path.push_back(node(goal, 0.0));
       break;
     }
-    double dist = greatCircleDistance(start.lat, start.lon, curr.city.lat, curr.city.lon);
+    double dist =
+        greatCircleDistance(start.lat, start.lon, curr.city.lat, curr.city.lon);
     double chargeTime = 0.0;
     if (dist >= range) {
       chargeTime = (dist - range) / curr.city.rate;
       range = 0;
-    }
-    else {
+    } else {
       range -= dist;
     }
     path.push_back(node(curr.city, chargeTime));
-    visited[curr.city.name] = true; 
+    visited[curr.city.name] = true;
     start = curr.city;
-    pq = std::priority_queue<searchNode, std::vector<searchNode>, compareSearchNode>();
+    pq = std::priority_queue<searchNode, std::vector<searchNode>,
+                             compareSearchNode>();
   }
 
   return path;
