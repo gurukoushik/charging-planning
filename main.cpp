@@ -96,19 +96,22 @@ bool verifyPath(std::vector<node> path) {
 
 void prettyPrintSolution(std::vector<node> path, stats solutionStats) {
   // Pretty print the planned route and charging time at each city
-  std::cout << "**************************** Planned path "
-               "*****************************\n";
+  std::cout << "******************************** Planned path "
+               "*********************************\n";
+  printf("%-30s%-30s%-6s\n", "City", "Charging Rate (km/hr)",
+         "Charging Time (hrs)");
   for (auto n : path) {
-    std::cout << "City: " << n.city.name << std::setw(50 - n.city.name.size())
-              << " Charging Time: " << n.chargeTime << " hr" << std::endl;
+    printf("%-30s%-30f%-6f\n", n.city.name.c_str(), n.city.rate, n.chargeTime);
   }
   std::cout << "***************************************************************"
+               "********"
                "********\n";
   std::cout << "Trip time: " << solutionStats.tripTimeHrs << " hrs"
             << "    "
             << "Path compute time: " << solutionStats.computeTimeSecs
             << " seconds" << std::endl;
   std::cout << "***************************************************************"
+               "********"
                "********\n";
 }
 
@@ -299,9 +302,9 @@ int main(int argc, char** argv) {
   std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
 
   // Approach 4:
-  // The current charging strategy is to only charge enough to reach the next city
-  // in the path. This can be suboptimal if we can preemptively charge more in cities
-  // with faster charging rate
+  // The current charging strategy is to only charge enough to reach the next
+  // city in the path. This can be suboptimal if we can preemptively charge more
+  // in cities with faster charging rate
   // TODO
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
@@ -310,7 +313,8 @@ int main(int argc, char** argv) {
   solutionStats.computeTimeSecs = timeTaken.count();
   solutionStats.tripTimeHrs = getTripTimeHrs(path);
 
-  std::cout << "Path valid? : " << verifyPath(path) << std::endl;
+  std::cout << "\nPath valid : " << (verifyPath(path) ? "yes" : "no")
+            << std::endl;
   prettyPrintSolution(path, solutionStats);
 
   return 0;
