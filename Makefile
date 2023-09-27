@@ -14,6 +14,11 @@ build: clean
 		@echo "${PURPLE}Building the target...${NC}"
 		g++ -std=c++11 -O1 main.cpp network.cpp -o plan
 
+.PHONY: build-debug
+build-debug: clean
+		@echo "${PURPLE}Building the target in debug mode...${NC}"
+		g++ -std=c++11 -g main.cpp network.cpp -o plan
+
 .PHONY: clean
 clean:
 		@echo "${PURPLE}Clean build files...${NC}"
