@@ -17,4 +17,4 @@ build: clean
 .PHONY: clean
 clean:
 		@echo "${PURPLE}Clean build files...${NC}"
-		rm plan
+		rm plan | true
