@@ -1,6 +1,7 @@
 #include <cmath>
 #include <iomanip>
 #include <vector>
+#include <queue>
 
 #include "network.h"
 
@@ -76,6 +77,22 @@ double getTripTimeHrs(std::vector<node> path) {
   return tripTimeHrs;
 }
 
+bool verifyPath(std::vector<node> path) {
+  bool validPath = true;
+  double range = INIT_RANGE;
+  for (int i = 1; i < path.size(); i++) {
+    range -= greatCircleDistance(path[i - 1].city.lat, path[i - 1].city.lon,
+                                 path[i].city.lat, path[i].city.lon);
+    // std::cout << "range at " << path[i].city.name << " " << range << "\n";
+    if (range < 0) {
+      validPath = false;
+      break;
+    }
+    range += path[i].chargeTime * path[i].city.rate;
+  }
+  return validPath;
+}
+
 void prettyPrintSolution(std::vector<node> path, stats solutionStats) {
   // Pretty print the planned route and charging time at each city
   std::cout << "**************************** Planned path "
@@ -114,8 +131,8 @@ row findMinDeviationCity(row start, row goal, double range) {
 std::vector<node> findBruteForcePath(std::string startCityName,
                                      std::string goalCityName) {
   std::vector<node> path;
-  row start = getCityFromString(startCity);
-  row goal = getCityFromString(goalCity);
+  row start = getCityFromString(startCityName);
+  row goal = getCityFromString(goalCityName);
   double range = INIT_RANGE;
 
   path.push_back(node(start, 0));
@@ -155,20 +172,39 @@ std::vector<node> reevaluateChargingTimes(std::vector<node> path) {
   return path;
 }
 
-bool verifyPath(std::vector<node> path) {
-  bool validPath = true;
-  double range = INIT_RANGE;
-  for (int i = 1; i < path.size(); i++) {
-    range -= greatCircleDistance(path[i - 1].city.lat, path[i - 1].city.lon,
-                                 path[i].city.lat, path[i].city.lon);
-    // std::cout << "range at " << path[i].city.name << " " << range << "\n";
-    if (range < 0) {
-      validPath = false;
-      break;
+struct searchNode {
+  row city;
+  double deviation;
+  double distToGoal;
+  double chargeTime;
+
+  searchNode(row c, double dev, double dist, double ct) : city(c), deviation(dev), distToGoal(dist), chargeTime(ct){};
+};
+
+class compareSearchNode
+{
+public:
+    bool operator()(searchNode &node1, searchNode &node2) {
+      return (node1.deviation > node2.deviation);
     }
-    range += path[i].chargeTime * path[i].city.rate;
-  }
-  return validPath;
+
+};
+
+std::vector<node> findMonteCarloPath(std::string startCityName, std::string goalCityName, int branchFactor) {
+  std::vector<node> path;
+  row start = getCityFromString(startCityName);
+  row goal = getCityFromString(goalCityName);
+  double range = INIT_RANGE;
+
+  std::vector<bool> visited(network.size(), false);
+  std::priority_queue<searchNode, std::vector<searchNode>, compareSearchNode> pq;
+
+  pq.push(searchNode(start, 0.0, greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon), 0.0));
+
+  bool done = false;
+  // while (!done) {
+
+  // }
 }
 
 int main(int argc, char** argv) {
