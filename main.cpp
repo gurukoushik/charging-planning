@@ -217,13 +217,14 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
       }
 
       double cityToGoal = greatCircleDistance(n.lat, n.lon, goal.lat, goal.lon);
-      double startToGoal = greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon);
+      double startToGoal =
+          greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon);
       double deviation = startToCity + cityToGoal - startToGoal;
 
       if (deviation > 2 * startToGoal) {
         continue;
       }
-      
+
       pq.push(searchNode(n, deviation));
     }
     int iteration = 0;
@@ -252,13 +253,13 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
 }
 
 std::vector<node> runMonteCarlo(std::string startCityName,
-                                     std::string goalCityName,
-                                     int branchFactor,
-                                     int maxIterations) {
+                                std::string goalCityName, int branchFactor,
+                                int maxIterations) {
   std::vector<node> bestPath;
   double bestTime = std::numeric_limits<double>::infinity();
   for (int i = 0; i < maxIterations; i++) {
-    std::vector<node> path = findMonteCarloPath(startCityName, goalCityName, branchFactor);
+    std::vector<node> path =
+        findMonteCarloPath(startCityName, goalCityName, branchFactor);
     path = reevaluateChargingTimes(path);
     double time = getTripTimeHrs(path);
     if (time < bestTime) {
