@@ -2,11 +2,12 @@
 #include <iomanip>
 #include <vector>
 #include <queue>
+#include <unordered_map>
 
 #include "network.h"
 
 #define NUM_CHARGERS 303
-#define INIT_RANGE 320.0  // km
+#define MAX_RANGE 320.0  // km
 #define SPEED 105.0       // kmph
 #define R 6356.752        // km
 #define PI 3.141592653589793238462643383279502884197169399375105820
@@ -79,7 +80,7 @@ double getTripTimeHrs(std::vector<node> path) {
 
 bool verifyPath(std::vector<node> path) {
   bool validPath = true;
-  double range = INIT_RANGE;
+  double range = MAX_RANGE;
   for (int i = 1; i < path.size(); i++) {
     range -= greatCircleDistance(path[i - 1].city.lat, path[i - 1].city.lon,
                                  path[i].city.lat, path[i].city.lon);
@@ -133,7 +134,7 @@ std::vector<node> findBruteForcePath(std::string startCityName,
   std::vector<node> path;
   row start = getCityFromString(startCityName);
   row goal = getCityFromString(goalCityName);
-  double range = INIT_RANGE;
+  double range = MAX_RANGE;
 
   path.push_back(node(start, 0));
   while (greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon) >
@@ -144,8 +145,8 @@ std::vector<node> findBruteForcePath(std::string startCityName,
                                  minDeviationCity.lon);
     // Charge back to full range
     double chargeTimeMinDeviationCity =
-        (INIT_RANGE - range) / minDeviationCity.rate;
-    range = INIT_RANGE;
+        (MAX_RANGE - range) / minDeviationCity.rate;
+    range = MAX_RANGE;
 
     path.push_back(node(minDeviationCity, chargeTimeMinDeviationCity));
     start = minDeviationCity;
@@ -156,7 +157,7 @@ std::vector<node> findBruteForcePath(std::string startCityName,
 }
 
 std::vector<node> reevaluateChargingTimes(std::vector<node> path) {
-  double range = INIT_RANGE;
+  double range = MAX_RANGE;
   for (int i = 0; i < path.size() - 1; i++) {
     double dist =
         greatCircleDistance(path[i].city.lat, path[i].city.lon,
@@ -175,10 +176,8 @@ std::vector<node> reevaluateChargingTimes(std::vector<node> path) {
 struct searchNode {
   row city;
   double deviation;
-  double distToGoal;
-  double chargeTime;
 
-  searchNode(row c, double dev, double dist, double ct) : city(c), deviation(dev), distToGoal(dist), chargeTime(ct){};
+  searchNode(row c, double dev) : city(c), deviation(dev) {};
 };
 
 class compareSearchNode
@@ -191,20 +190,54 @@ public:
 };
 
 std::vector<node> findMonteCarloPath(std::string startCityName, std::string goalCityName, int branchFactor) {
-  std::vector<node> path;
   row start = getCityFromString(startCityName);
   row goal = getCityFromString(goalCityName);
-  double range = INIT_RANGE;
+  double range = MAX_RANGE;
 
-  std::vector<bool> visited(network.size(), false);
+  std::vector<node> path;
+  std::unordered_map<std::string, bool> visited;
   std::priority_queue<searchNode, std::vector<searchNode>, compareSearchNode> pq;
 
-  pq.push(searchNode(start, 0.0, greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon), 0.0));
+  path.push_back(node(start, 0.0));
+  visited[start.name] = true;
 
-  bool done = false;
-  // while (!done) {
+  while (true) {
+    std::cout << start.name << std::endl;
+    for (auto n: network) {
+      if (visited[n.name]) {
+        continue;
+      }
+      double startToCity = greatCircleDistance(start.lat, start.lon, n.lat, n.lon);
+      if (startToCity > MAX_RANGE) {
+        continue;
+      }
 
-  // }
+      double cityToGoal = greatCircleDistance(n.lat, n.lon, goal.lat, goal.lon);
+      double deviation =  startToCity + cityToGoal - greatCircleDistance(start.lat, start.lon, goal.lat, goal.lon);
+      pq.push(searchNode(n, deviation));
+    }
+    int iteration = 0;
+    searchNode curr = pq.top();
+    if (curr.city.name == goal.name) {
+      path.push_back(node(goal, 0.0));
+      break;
+    }
+    double dist = greatCircleDistance(start.lat, start.lon, curr.city.lat, curr.city.lon);
+    double chargeTime = 0.0;
+    if (dist >= range) {
+      chargeTime = (dist - range) / curr.city.rate;
+      range = 0;
+    }
+    else {
+      range -= dist;
+    }
+    path.push_back(node(curr.city, chargeTime));
+    visited[curr.city.name] = true; 
+    start = curr.city;
+    pq = std::priority_queue<searchNode, std::vector<searchNode>, compareSearchNode>();
+  }
+
+  return path;
 }
 
 int main(int argc, char** argv) {
@@ -222,13 +255,13 @@ int main(int argc, char** argv) {
   // d(city, goal)) Additionally impose the constraint that the d(start, city) <
   // range At each city, charge fully to the maximum range of the vehicle Do
   // this iteratively until d(city, goal) < range
-  std::vector<node> path = findBruteForcePath(startCity, goalCity);
+  // std::vector<node> path = findBruteForcePath(startCity, goalCity);
 
   // Approach 2:
   // Reset the charging times based on the found path. Set the charging time
   // to just the amount of charge needed to get to the next city in the path
-  std::vector<node> reevaluatedPath = reevaluateChargingTimes(path);
-  path = reevaluatedPath;
+  // std::vector<node> reevaluatedPath = reevaluateChargingTimes(path);
+  // path = reevaluatedPath;
 
   // Approach 3:
   // - From both start and the goal, add the cities within range to their
@@ -238,6 +271,7 @@ int main(int argc, char** argv) {
   // - Expand from both the start and goal priority queues until there is an
   // intersection between the queues.
   // - Do a Monte Carlo from start to goal and find the minimum time path
+  std::vector<node> path = findMonteCarloPath(startCity, goalCity, 10);
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
