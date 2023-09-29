@@ -5,6 +5,9 @@
 #include <vector>
 
 #include "network.hpp"
+#include "ortools/base/init_google.h"
+#include "ortools/base/logging.h"
+#include "ortools/linear_solver/linear_solver.h"
 
 #define NUM_CHARGERS 303
 #define MAX_RANGE 320.0  // km
@@ -273,6 +276,46 @@ std::vector<node> runMonteCarlo(std::string startCityName,
   return bestPath;
 }
 
+std::vector<node> findOptimalChargingTimes(std::vector<node> path) {
+  std::unique_ptr<operations_research::MPSolver> solver(
+      operations_research::MPSolver::CreateSolver("GLOP"));
+
+  std::vector<operations_research::MPVariable*> chargingTimes;
+  const double infinity = solver->infinity();
+  for (auto n : path) {
+    chargingTimes.push_back(solver->MakeNumVar(0.0, infinity, n.city.name));
+  }
+  LOG(INFO) << "Number of variables = " << solver->NumVariables();
+
+  operations_research::MPObjective* const objective =
+      solver->MutableObjective();
+  for (size_t i = 0; i < path.size(); i++) {
+    objective->SetCoefficient(chargingTimes[i], 1);
+  }
+  objective->SetMinimization();
+
+  const operations_research::MPSolver::ResultStatus result_status =
+      solver->Solve();
+
+  if (result_status != operations_research::MPSolver::OPTIMAL) {
+    LOG(INFO) << "The problem does not have an optimal solution!";
+    if (result_status == operations_research::MPSolver::FEASIBLE) {
+      LOG(INFO) << "A potentially suboptimal solution was found";
+    } else {
+      LOG(INFO) << "The solver could not solve the problem.";
+    }
+  }
+
+  LOG(INFO) << "Objective function value: "
+            << std::to_string(objective->Value()) << std::endl;
+
+  for (int i = 0; i < chargingTimes.size(); i++) {
+    LOG(INFO) << path[i].city.name << " " << chargingTimes[i]->solution_value();
+  }
+
+  return path;
+}
+
 int main(int argc, char** argv) {
   if (!input(argc, argv)) {
     std::cerr << "Error: requires correct initial and final supercharger names"
@@ -343,6 +386,7 @@ int main(int argc, char** argv) {
   min kx s.t Ax >= b and x >= 0
 
   */
+  std::vector<node> lpPath = findOptimalChargingTimes(path);
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
