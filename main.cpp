@@ -337,6 +337,11 @@ int main(int argc, char** argv) {
 
   r[i] >= d[i][i+1]
 
+  Solution:
+  This is a linear programming problem which follows the structure
+
+  min kx s.t Ax >= b and x >= 0
+
   */
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
