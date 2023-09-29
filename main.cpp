@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "network.h"
+#include "network.hpp"
 
 #define NUM_CHARGERS 303
 #define MAX_RANGE 320.0  // km
