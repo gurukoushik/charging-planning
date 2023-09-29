@@ -283,29 +283,61 @@ int main(int argc, char** argv) {
   stats solutionStats;
   auto timeStart = std::chrono::high_resolution_clock::now();
 
-  // Approach 1:
-  // Given a start and goal, find a city which satisfies min(d(start, city) +
-  // d(city, goal)) Additionally impose the constraint that the d(start, city) <
-  // range At each city, charge fully to the maximum range of the vehicle Do
-  // this iteratively until d(city, goal) < range
-  // std::vector<node> path = findBruteForcePath(startCity, goalCity);
+  /*
+  Approach 1:
+  Given a start and goal, find a city which satisfies min(d(start, city) +
+  d(city, goal)) Additionally impose the constraint that the d(start, city) <
+  range At each city, charge fully to the maximum range of the vehicle Do
+  this iteratively until d(city, goal) < range
+  */
+  std::vector<node> path = findBruteForcePath(startCity, goalCity);
 
-  // Approach 2:
-  // Reset the charging times based on the found path. Set the charging time
-  // to just the amount of charge needed to get to the next city in the path
-  // std::vector<node> reevaluatedPath = reevaluateChargingTimes(path);
-  // path = reevaluatedPath;
+  /*
+  Approach 2:
+  Reset the charging times based on the found path. Set the charging time
+  to just the amount of charge needed to get to the next city in the path
+  */
+  path = reevaluateChargingTimes(path);
 
-  // Approach 3:
-  // - From the start city, run a monte carlo simulation by choosing the next
-  //   city to go to in top 'branchFactor' number of mimimum deviation cities
-  std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
+  /*
+  Approach 3:
+  - From the start city, run a monte carlo simulation by choosing the next
+    city to go to in top 'branchFactor' number of mimimum deviation cities
+  */
+  // std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
 
-  // Approach 4:
-  // The current charging strategy is to only charge enough to reach the next
-  // city in the path. This can be suboptimal if we can preemptively charge more
-  // in cities with faster charging rate
-  // TODO
+  /*
+  Approach 4:
+  The current charging strategy is to only charge enough to reach the next
+  city in the path. This can be suboptimal if we can preemptively charge more
+  in cities with faster charging rate
+
+  Formulate it as an optimization problem:
+
+  Variables:
+  Let i = 1, 2, ... n be the index noting the cities in the path
+  Let t[i] denote the time spent in charging at city i
+  Let k[i] denote the rate of charging at city i
+  Let d[i][j] be the distance between city i and city j
+  Let r[i] be the range at city i when departing city i after charging
+  Let R be the maximum range of the vehicle
+
+  Objective:
+  minimize t[1] + t[2] + ... + t[i] + ... + t[n]
+
+  Constraints:
+  t[i] >= 0
+  0 <= r[i] <= R
+
+  r[1] = R
+  r[2] = r[1] - d[1][2] + k[1] * t[1]
+  .
+  .
+  r[i] = r[i-1] - d[i-1][i] + k[i] * t[i]
+
+  r[i] >= d[i][i+1]
+
+  */
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
