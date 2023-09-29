@@ -5,5 +5,7 @@ project(charging-planning)
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-std=c++17)
 
+# TODO: Include OR-tools headers
+
 # Add your source files and set up the build
 add_executable(plan main.cpp network.cpp)
