@@ -11,15 +11,15 @@ format:
 
 .PHONY: build
 build: clean
-		@echo "${PURPLE}Building the target...${NC}"
-		g++ -std=c++11 -O1 main.cpp network.cpp -o plan
+		@echo "${PURPLE}Building the targets...${NC}"
+		mkdir build && cd build && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .. && make
 
 .PHONY: build-debug
 build-debug: clean
-		@echo "${PURPLE}Building the target in debug mode...${NC}"
-		g++ -std=c++11 -g main.cpp network.cpp -o plan
+		@echo "${PURPLE}Building the targets in debug mode...${NC}"
+		mkdir build && cd build && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug .. && make
 
 .PHONY: clean
 clean:
 		@echo "${PURPLE}Clean build files...${NC}"
-		rm plan | true
+		rm -r build | true
