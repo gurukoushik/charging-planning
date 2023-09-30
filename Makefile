@@ -23,3 +23,8 @@ build-debug: clean
 clean:
 		@echo "${PURPLE}Clean build files...${NC}"
 		rm -r build | true
+
+.PHONY:
+test-plan:
+		@echo "${PURPLE}Run test plan...${NC}"
+		build/plan San_Diego_CA Brooklyn_NY
