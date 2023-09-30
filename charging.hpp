@@ -6,6 +6,6 @@
 #include "ortools/linear_solver/linear_solver.h"
 #include "utils.hpp"
 
-std::vector<node> reevaluateChargingTimes(std::vector<node> path);
+std::vector<node> findGreedyChargingTimes(std::vector<node> path);
 std::vector<node> findOptimalChargingTimes(std::vector<node> path,
                                            bool verbose);

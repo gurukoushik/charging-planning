@@ -24,4 +24,4 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
                                      int branchFactor);
 std::vector<node> runMonteCarlo(std::string startCityName,
                                 std::string goalCityName, int branchFactor,
-                                int maxIterations);
+                                int maxIterations, bool optimal);

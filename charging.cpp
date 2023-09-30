@@ -1,6 +1,6 @@
 #include "charging.hpp"
 
-std::vector<node> reevaluateChargingTimes(std::vector<node> path) {
+std::vector<node> findGreedyChargingTimes(std::vector<node> path) {
   /*
   Reset the charging times based on the found path. Set the charging time
   to just the amount of charge needed to get to the next city in the path

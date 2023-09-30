@@ -121,14 +121,19 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
 
 std::vector<node> runMonteCarlo(std::string startCityName,
                                 std::string goalCityName, int branchFactor,
-                                int maxIterations) {
+                                int maxIterations, bool optimal) {
   std::vector<node> bestPath;
   double bestTime = std::numeric_limits<double>::infinity();
   for (int i = 0; i < maxIterations; i++) {
     std::vector<node> path =
         findMonteCarloPath(startCityName, goalCityName, branchFactor);
-    // path = reevaluateChargingTimes(path);
-    path = findOptimalChargingTimes(path, false);
+
+    if (optimal) {
+      path = findOptimalChargingTimes(path, false);
+    } else {
+      path = findGreedyChargingTimes(path);
+    }
+
     double time = getTripTimeHrs(path);
     if (time < bestTime) {
       bestPath = path;

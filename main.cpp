@@ -19,6 +19,14 @@ bool input(int argc, char** argv) {
   return true;
 }
 
+enum Method {
+  BRUTE_FORCE_CHARGE_FULL,
+  BRUTE_FORCE_CHARGE_GREEDY,
+  BRUTE_FORCE_CHARGE_OPTIMAL,
+  MONTE_CARLO_CHARGE_GREEDY,
+  MONTE_CARLO_CHARGE_OPTIMAL,
+};
+
 int main(int argc, char** argv) {
   if (!input(argc, argv)) {
     std::cerr << "Error: requires correct initial and final supercharger names"
@@ -26,12 +34,35 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  Method method = BRUTE_FORCE_CHARGE_FULL;
+
   stats solutionStats;
   auto timeStart = std::chrono::high_resolution_clock::now();
 
-  // std::vector<node> path = findBruteForcePath(startCity, goalCity);
-  // path = reevaluateChargingTimes(path);
-  std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
+  std::vector<node> path;
+
+  switch (method) {
+    case BRUTE_FORCE_CHARGE_FULL:
+      path = findBruteForcePath(startCity, goalCity);
+      break;
+    case BRUTE_FORCE_CHARGE_GREEDY:
+      path = findBruteForcePath(startCity, goalCity);
+      path = findGreedyChargingTimes(path);
+      break;
+    case BRUTE_FORCE_CHARGE_OPTIMAL:
+      path = findBruteForcePath(startCity, goalCity);
+      path = findOptimalChargingTimes(path, false);
+      break;
+    case MONTE_CARLO_CHARGE_GREEDY:
+      path = runMonteCarlo(startCity, goalCity, 3, 1000, false);
+      break;
+    case MONTE_CARLO_CHARGE_OPTIMAL:
+      path = runMonteCarlo(startCity, goalCity, 3, 1000, true);
+      break;
+    default:
+      std::cout << "Invalid method!\n";
+      break;
+  }
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
