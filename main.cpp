@@ -88,7 +88,8 @@ bool verifyPath(std::vector<node> path) {
     range -= greatCircleDistance(path[i - 1].city.lat, path[i - 1].city.lon,
                                  path[i].city.lat, path[i].city.lon);
     // std::cout << "range at " << path[i].city.name << " " << range << "\n";
-    if (range < 0) {
+    if (range < -1e-9) {
+      std::cout << "ran out of range in city: " << path[i].city.name << " range: " << range << std::endl;
       validPath = false;
       break;
     }
@@ -258,41 +259,38 @@ std::vector<node> findMonteCarloPath(std::string startCityName,
   return path;
 }
 
-std::vector<node> runMonteCarlo(std::string startCityName,
-                                std::string goalCityName, int branchFactor,
-                                int maxIterations) {
-  std::vector<node> bestPath;
-  double bestTime = std::numeric_limits<double>::infinity();
-  for (int i = 0; i < maxIterations; i++) {
-    std::vector<node> path =
-        findMonteCarloPath(startCityName, goalCityName, branchFactor);
-    path = reevaluateChargingTimes(path);
-    double time = getTripTimeHrs(path);
-    if (time < bestTime) {
-      bestPath = path;
-      bestTime = time;
-    }
-  }
-  return bestPath;
-}
-
 std::vector<node> findOptimalChargingTimes(std::vector<node> path) {
   std::unique_ptr<operations_research::MPSolver> solver(
       operations_research::MPSolver::CreateSolver("GLOP"));
 
   std::vector<operations_research::MPVariable*> chargingTimes;
   const double infinity = solver->infinity();
-  for (auto n : path) {
-    chargingTimes.push_back(solver->MakeNumVar(0.0, infinity, n.city.name));
+  for (int i = 0; i < path.size() - 1; i++) {
+    chargingTimes.push_back(solver->MakeNumVar(0.0, infinity, path[i].city.name));
   }
   LOG(INFO) << "Number of variables = " << solver->NumVariables();
 
   operations_research::MPObjective* const objective =
       solver->MutableObjective();
-  for (size_t i = 0; i < path.size(); i++) {
+  for (size_t i = 0; i < path.size() - 1; i++) {
     objective->SetCoefficient(chargingTimes[i], 1);
   }
   objective->SetMinimization();
+
+  double r0 = MAX_RANGE;
+  double sum_d = 0;
+
+  std::vector<operations_research::MPConstraint*> constraints;
+  for (int i = 0; i < path.size() - 1; i++) {
+    double di = greatCircleDistance(path[i].city.lat, path[i].city.lon, path[i+1].city.lat, path[i+1].city.lon);
+    double lb = di - r0 + sum_d;
+    double ub = MAX_RANGE - r0 + sum_d;
+    sum_d += di;
+    constraints.push_back(solver->MakeRowConstraint(lb, ub));
+    for(int j = 0; j < path.size() - 1; j++) {
+        constraints.back()->SetCoefficient(chargingTimes[j], (j <= i) ? path[j].city.rate : 0.0);
+    }
+  }
 
   const operations_research::MPSolver::ResultStatus result_status =
       solver->Solve();
@@ -313,7 +311,30 @@ std::vector<node> findOptimalChargingTimes(std::vector<node> path) {
     LOG(INFO) << path[i].city.name << " " << chargingTimes[i]->solution_value();
   }
 
+  for(int i = 0; i < path.size() - 1; i++) {
+    path[i].chargeTime = chargingTimes[i]->solution_value();
+  }
+
   return path;
+}
+
+std::vector<node> runMonteCarlo(std::string startCityName,
+                                std::string goalCityName, int branchFactor,
+                                int maxIterations) {
+  std::vector<node> bestPath;
+  double bestTime = std::numeric_limits<double>::infinity();
+  for (int i = 0; i < maxIterations; i++) {
+    std::vector<node> path =
+        findMonteCarloPath(startCityName, goalCityName, branchFactor);
+    // path = reevaluateChargingTimes(path);
+    path = findOptimalChargingTimes(path);
+    double time = getTripTimeHrs(path);
+    if (time < bestTime) {
+      bestPath = path;
+      bestTime = time;
+    }
+  }
+  return bestPath;
 }
 
 int main(int argc, char** argv) {
@@ -333,21 +354,21 @@ int main(int argc, char** argv) {
   range At each city, charge fully to the maximum range of the vehicle Do
   this iteratively until d(city, goal) < range
   */
-  std::vector<node> path = findBruteForcePath(startCity, goalCity);
+  // std::vector<node> path = findBruteForcePath(startCity, goalCity);
 
   /*
   Approach 2:
   Reset the charging times based on the found path. Set the charging time
   to just the amount of charge needed to get to the next city in the path
   */
-  path = reevaluateChargingTimes(path);
+  // path = reevaluateChargingTimes(path);
 
   /*
   Approach 3:
   - From the start city, run a monte carlo simulation by choosing the next
     city to go to in top 'branchFactor' number of mimimum deviation cities
   */
-  // std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
+  std::vector<node> path = runMonteCarlo(startCity, goalCity, 3, 1000);
 
   /*
   Approach 4:
@@ -386,7 +407,7 @@ int main(int argc, char** argv) {
   min kx s.t Ax >= b and x >= 0
 
   */
-  std::vector<node> lpPath = findOptimalChargingTimes(path);
+  path = findOptimalChargingTimes(path);
 
   auto timeEnd = std::chrono::high_resolution_clock::now();
   auto timeTaken = std::chrono::duration_cast<std::chrono::duration<double>>(
