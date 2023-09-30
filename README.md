@@ -14,9 +14,24 @@ vehicle cannot drop below zero.
 
 ## Usage
 
+Clone the repository
+
 ```bash
+git clone git@github.com:gurukoushik/charging-planning.git
+cd charging-planning
+```
+
+Build and run the solution
+
+```bash
+# Build the targets
 make build
-build/plan Council_Bluffs_IA Cadillac_MI 
+
+# Short route
+build/plan Council_Bluffs_IA Cadillac_MI
+
+# Long route
+build/plan San_Diego_CA Brooklyn_NY
 ```
 
 ## Source
