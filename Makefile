@@ -2,7 +2,7 @@ PURPLE = \033[1;35m
 NC = \033[00m
 
 .PHONY: all
-all: build format tidy
+all: build format
 
 .PHONY: format
 format:
